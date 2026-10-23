@@ -1,0 +1,18 @@
+[tools]
+java = "temurin-25"
+node = "24.21.0"
+
+[tasks.test]
+description = "Run the test suite"
+run = "./mvnw test"
+run_windows = "mvnw.cmd test"
+
+[tasks.verify]
+description = "Run verification and package checks"
+run = "./mvnw verify"
+run_windows = "mvnw.cmd verify"
+
+[tasks.format]
+description = "Apply Java formatting"
+run = "./mvnw spotless:apply"
+run_windows = "mvnw.cmd spotless:apply"
