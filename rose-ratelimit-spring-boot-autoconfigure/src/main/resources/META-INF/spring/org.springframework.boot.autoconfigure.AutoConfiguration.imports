@@ -1,0 +1,3 @@
+io.zhijun.ratelimit.autoconfigure.RateLimitAutoConfiguration
+io.zhijun.ratelimit.autoconfigure.RateLimitMvcAutoConfiguration
+io.zhijun.ratelimit.autoconfigure.RateLimitMetricsAutoConfiguration
