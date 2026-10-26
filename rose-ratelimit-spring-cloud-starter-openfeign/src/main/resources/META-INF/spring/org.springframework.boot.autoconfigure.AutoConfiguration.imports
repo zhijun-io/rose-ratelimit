@@ -1,0 +1,2 @@
+io.zhijun.ratelimit.feign.autoconfigure.RateLimitFeignResolverAutoConfiguration
+io.zhijun.ratelimit.feign.autoconfigure.RateLimitFeignAutoConfiguration

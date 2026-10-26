@@ -1,0 +1,93 @@
+spring:
+  application:
+    name: rose-ratelimit-sample
+  datasource:
+    url: jdbc:h2:mem:rose-ratelimit-sample;DB_CLOSE_DELAY=-1
+    username: sa
+    password:
+  sql:
+    init:
+      mode: always
+
+rose:
+  ratelimit:
+    rules:
+      - id: login-ip
+        stage: FILTER
+        path: /api/auth/login
+        methods: [POST]
+        capacity: 3
+        refill-tokens: 3
+        refill-period: 1m
+        key-source: ip
+        failure-mode: CLOSED
+      - id: item-read
+        stage: MVC
+        path: /api/items
+        methods: [GET]
+        capacity: 5
+        refill-tokens: 5
+        refill-period: 10s
+        key-source: ip
+      - id: item-write
+        stage: MVC
+        path: /api/items
+        methods: [POST]
+        capacity: 2
+        refill-tokens: 2
+        refill-period: 1m
+        key-source: ip
+      - id: report-summary-query
+        stage: MYBATIS
+        target: mybatis:io.zhijun.ratelimit.sample.ReportMapper.countRows
+        capacity: 3
+        refill-tokens: 3
+        refill-period: 1m
+        key-source: mybatis
+      - id: export
+        stage: MVC
+        capacity: 1
+        refill-tokens: 1
+        refill-period: 1m
+        key-source: ip
+      # v6: circuit-breaker + rate-limit on MVC (OPEN → 503, not 429).
+      - id: fragile-cb
+        stage: MVC
+        path: /api/fragile/**
+        kind: composite
+        behaviors: [circuit-breaker, rate-limit]
+        capacity: 100
+        refill-tokens: 100
+        refill-period: 1s
+        circuit-breaker:
+          minimum-number-of-calls: 3
+          sliding-window-size: 5
+          failure-rate-threshold: 50
+        circuit-open-status: 503
+        failure-mode: CLOSED
+      # v6: FILTER retry wraps the Servlet chain after rate-limit allow (must be before demo-bulkhead).
+      - id: demo-retry
+        stage: FILTER
+        path: /api/demo/retry
+        kind: composite
+        behaviors: [rate-limit, retry]
+        capacity: 100
+        refill-tokens: 100
+        refill-period: 1s
+        retry:
+          max-attempts: 3
+          wait-duration: 100ms
+        key-source: ip
+      # v6: Resilience4j bulkhead on the Servlet chain (requires starter-resilience4j).
+      - id: demo-bulkhead
+        stage: FILTER
+        path: /api/demo/**
+        kind: composite
+        behaviors: [rate-limit, bulkhead]
+        capacity: 100
+        refill-tokens: 100
+        refill-period: 1s
+        bulkhead:
+          max-concurrent-calls: 2
+          max-wait-duration: 0ms
+        key-source: ip

@@ -6,6 +6,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import io.zhijun.ratelimit.*;
+import io.zhijun.ratelimit.bucket4j.autoconfigure.Bucket4jRateLimitAutoConfiguration;
 import io.zhijun.ratelimit.web.*;
 import jakarta.servlet.http.HttpServletRequest;
 import java.time.Duration;
@@ -26,6 +27,8 @@ import org.springframework.web.servlet.config.annotation.EnableWebMvc;
 class RateLimitIntegrationTest {
     private final WebApplicationContextRunner runner = new WebApplicationContextRunner()
             .withConfiguration(AutoConfigurations.of(
+                    Bucket4jRateLimitAutoConfiguration.class,
+                    RateLimitSharedAutoConfiguration.class,
                     RateLimitAutoConfiguration.class,
                     RateLimitMvcAutoConfiguration.class,
                     RateLimitMetricsAutoConfiguration.class));

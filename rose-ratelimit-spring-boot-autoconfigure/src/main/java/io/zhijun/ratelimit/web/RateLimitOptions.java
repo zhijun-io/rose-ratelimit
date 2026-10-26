@@ -11,7 +11,13 @@ public final class RateLimitOptions {
 
     public enum Stage {
         FILTER,
-        MVC
+        MVC,
+        REST_CLIENT,
+        FEIGN,
+        MYBATIS,
+        JDBC,
+        MQ,
+        INVOKE
     }
 
     public enum Scope {

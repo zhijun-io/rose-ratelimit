@@ -14,9 +14,17 @@ import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandl
 @ConditionalOnProperty(prefix = "rose.ratelimit", name = "mvc-enabled", havingValue = "true", matchIfMissing = true)
 public class RateLimitMvcAutoConfiguration {
     @Bean
+    RateLimitMvcBindingInitializer rateLimitMvcBindingInitializer(
+            RateLimitRules rules,
+            RateLimitProperties properties,
+            ObjectProvider<RequestMappingHandlerMapping> mappings) {
+        return new RateLimitMvcBindingInitializer(rules, properties, mappings);
+    }
+
+    @Bean
     RateLimitInterceptor rateLimitInterceptor(
-            RateLimitRules rules, RateLimitExecutor executor, ObjectProvider<RequestMappingHandlerMapping> mappings) {
-        return new RateLimitInterceptor(rules, executor, mappings);
+            RateLimitRules rules, RateLimitExecutor executor, RateLimitProperties properties) {
+        return new RateLimitInterceptor(rules, executor, properties);
     }
 
     @Bean

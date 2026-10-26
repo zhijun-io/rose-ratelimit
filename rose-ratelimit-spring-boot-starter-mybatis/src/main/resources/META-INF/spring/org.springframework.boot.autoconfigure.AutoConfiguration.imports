@@ -1,0 +1,2 @@
+io.zhijun.ratelimit.mybatis.autoconfigure.RateLimitMybatisResolverAutoConfiguration
+io.zhijun.ratelimit.mybatis.autoconfigure.RateLimitMybatisAutoConfiguration

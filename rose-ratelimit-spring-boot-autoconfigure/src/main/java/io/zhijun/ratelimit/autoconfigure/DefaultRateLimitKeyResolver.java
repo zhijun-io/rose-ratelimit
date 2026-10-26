@@ -26,10 +26,10 @@ final class DefaultRateLimitKeyResolver implements RateLimitKeyResolver {
     public String resolve(HttpServletRequest request, String header) {
         return switch (name) {
             case "ip" -> request.getRemoteAddr();
-            case "principal" ->
-                request.getUserPrincipal() == null
-                        ? null
-                        : request.getUserPrincipal().getName();
+            case "principal" -> {
+                var principal = request.getUserPrincipal();
+                yield principal == null ? null : principal.getName();
+            }
             case "header" -> request.getHeader(header);
             default -> throw new IllegalStateException("Unknown built-in resolver");
         };

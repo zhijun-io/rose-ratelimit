@@ -5,17 +5,17 @@
     <modelVersion>4.0.0</modelVersion>
     <parent>
         <groupId>io.zhijun</groupId>
-        <artifactId>rose-ratelimit-spring-boot-starter-parent</artifactId>
+        <artifactId>rose-ratelimit</artifactId>
         <version>0.1.0-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
     <artifactId>rose-ratelimit-spring-boot-autoconfigure</artifactId>
-    <name>Rose Rate Limit Auto Configuration</name>
+    <name>Rose Rate Limit Spring Boot Auto Configuration</name>
     <dependencies>
         <dependency><groupId>org.slf4j</groupId><artifactId>slf4j-api</artifactId></dependency>
         <dependency>
             <groupId>io.zhijun</groupId>
-            <artifactId>rose-ratelimit-spring-boot-core</artifactId>
+            <artifactId>rose-ratelimit-core</artifactId>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -50,6 +50,11 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-configuration-processor</artifactId>
             <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>io.zhijun</groupId>
+            <artifactId>rose-ratelimit-bucket4j</artifactId>
+            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>

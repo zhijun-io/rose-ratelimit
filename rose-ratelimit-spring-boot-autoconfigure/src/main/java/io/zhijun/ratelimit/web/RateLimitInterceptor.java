@@ -1,24 +1,20 @@
 package io.zhijun.ratelimit.web;
 
+import io.zhijun.ratelimit.autoconfigure.RateLimitProperties;
 import io.zhijun.ratelimit.web.RateLimitOptions.Stage;
 import jakarta.servlet.http.*;
-import org.springframework.beans.factory.ObjectProvider;
-import org.springframework.beans.factory.SmartInitializingSingleton;
-import org.springframework.core.annotation.AnnotatedElementUtils;
 import org.springframework.web.method.HandlerMethod;
 import org.springframework.web.servlet.HandlerInterceptor;
-import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
 
-public final class RateLimitInterceptor implements HandlerInterceptor, SmartInitializingSingleton {
+public final class RateLimitInterceptor implements HandlerInterceptor {
     private final RateLimitRules rules;
     private final RateLimitExecutor executor;
-    private final ObjectProvider<RequestMappingHandlerMapping> mappings;
+    private final RateLimitProperties properties;
 
-    public RateLimitInterceptor(
-            RateLimitRules rules, RateLimitExecutor executor, ObjectProvider<RequestMappingHandlerMapping> mappings) {
+    public RateLimitInterceptor(RateLimitRules rules, RateLimitExecutor executor, RateLimitProperties properties) {
         this.rules = rules;
         this.executor = executor;
-        this.mappings = mappings;
+        this.properties = properties;
     }
 
     @Override
@@ -29,25 +25,31 @@ public final class RateLimitInterceptor implements HandlerInterceptor, SmartInit
                 method.getBeanType().getName() + "#" + method.getMethod().getName();
         String bucketScope =
                 method.getBeanType().getName() + "#" + method.getMethod().toGenericString();
-        if (!executor.execute(request, response, rules.select(request, Stage.MVC, selector), bucketScope)) return false;
+        CompiledRule external = resolveExternalMvcRule(request, selector);
+        if (!executor.execute(request, response, external, bucketScope)) return false;
         RateLimit annotation = annotation(method);
         return annotation == null
                 || executor.execute(request, response, rules.annotationRule(annotation.value()), bucketScope);
     }
 
-    @Override
-    public void afterSingletonsInstantiated() {
-        mappings.orderedStream()
-                .forEach(mapping -> mapping.getHandlerMethods().values().forEach(method -> {
-                    RateLimit annotation = annotation(method);
-                    if (annotation != null) rules.annotationRule(annotation.value());
-                }));
+    private CompiledRule resolveExternalMvcRule(HttpServletRequest request, String selector) {
+        if (rules.mvcIndexReady()) {
+            CompiledRule bound = rules.externalMvcRule(selector);
+            if (bound != null) return bound;
+            if (!properties.getMvc().isRequireHandlerMatch()) {
+                return rules.select(request, Stage.MVC, selector);
+            }
+            return null;
+        }
+        return rules.select(request, Stage.MVC, selector);
     }
 
     private RateLimit annotation(HandlerMethod method) {
-        RateLimit annotation = AnnotatedElementUtils.findMergedAnnotation(method.getMethod(), RateLimit.class);
-        return annotation != null
-                ? annotation
-                : AnnotatedElementUtils.findMergedAnnotation(method.getBeanType(), RateLimit.class);
+        RateLimit onMethod = org.springframework.core.annotation.AnnotatedElementUtils.findMergedAnnotation(
+                method.getMethod(), RateLimit.class);
+        return onMethod != null
+                ? onMethod
+                : org.springframework.core.annotation.AnnotatedElementUtils.findMergedAnnotation(
+                        method.getBeanType(), RateLimit.class);
     }
 }

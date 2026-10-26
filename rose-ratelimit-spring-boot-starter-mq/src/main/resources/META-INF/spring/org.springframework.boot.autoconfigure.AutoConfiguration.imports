@@ -1,0 +1,3 @@
+io.zhijun.ratelimit.mq.autoconfigure.RateLimitMqAutoConfiguration
+io.zhijun.ratelimit.kafka.autoconfigure.RateLimitKafkaAutoConfiguration
+io.zhijun.ratelimit.rabbit.autoconfigure.RateLimitRabbitAutoConfiguration

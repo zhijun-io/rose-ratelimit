@@ -6,15 +6,15 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>4.1.1</version>
+        <version>4.1.2</version>
         <relativePath/>
     </parent>
 
     <groupId>io.zhijun</groupId>
-    <artifactId>rose-ratelimit-spring-boot-starter-parent</artifactId>
+    <artifactId>rose-ratelimit</artifactId>
     <version>0.1.0-SNAPSHOT</version>
     <packaging>pom</packaging>
-    <name>Rose Rate Limit Spring Boot Starter</name>
+    <name>Rose Rate Limit</name>
 
     <licenses>
         <license>
@@ -24,9 +24,9 @@
     </licenses>
 
     <scm>
-        <url>https://github.com/zhijun-io/rose-ratelimit-spring-boot-starter</url>
-        <connection>scm:git:git://github.com/zhijun-io/rose-ratelimit-spring-boot-starter.git</connection>
-        <developerConnection>scm:git:git@github.com:zhijun-io/rose-ratelimit-spring-boot-starter.git</developerConnection>
+        <url>https://github.com/zhijun-io/rose-ratelimit</url>
+        <connection>scm:git:git://github.com/zhijun-io/rose-ratelimit.git</connection>
+        <developerConnection>scm:git:git@github.com:zhijun-io/rose-ratelimit.git</developerConnection>
     </scm>
 
     <developers>
@@ -44,8 +44,14 @@
         <java.version>25</java.version>
         <maven.compiler.release>25</maven.compiler.release>
 
-        <!-- Third-party dependencies -->
         <bucket4j.version>8.16.1</bucket4j.version>
+        <resilience4j.version>2.2.0</resilience4j.version>
+        <spring-cloud.version>2025.1.2</spring-cloud.version>
+        <mybatis.version>3.5.19</mybatis.version>
+        <mybatis-spring-boot.version>4.1.0</mybatis-spring-boot.version>
+        <druid.version>1.2.24</druid.version>
+        <testcontainers.version>2.0.5</testcontainers.version>
+        <jacoco.version>0.8.15</jacoco.version>
 
         <!-- Build plugins -->
         <spotless-maven-plugin.version>3.10.4</spotless-maven-plugin.version>
@@ -57,29 +63,51 @@
     </properties>
 
     <modules>
-        <module>rose-ratelimit-spring-boot-core</module>
+        <module>rose-ratelimit-bom</module>
+        <module>rose-ratelimit-core</module>
+        <module>rose-ratelimit-bucket4j</module>
         <module>rose-ratelimit-spring-boot-autoconfigure</module>
-        <module>rose-ratelimit-spring-boot-redis</module>
         <module>rose-ratelimit-spring-boot-starter</module>
+        <module>rose-ratelimit-spring-boot-starter-restclient</module>
+        <module>rose-ratelimit-spring-boot-starter-resilience4j</module>
+        <module>rose-ratelimit-spring-cloud-starter-openfeign</module>
+        <module>rose-ratelimit-spring-boot-starter-mybatis</module>
+        <module>rose-ratelimit-spring-boot-starter-alibaba-druid</module>
+        <module>rose-ratelimit-spring-boot-starter-mq</module>
         <module>rose-ratelimit-spring-boot-starter-redis</module>
-        <module>rose-ratelimit-spring-boot-sample</module>
+        <module>rose-ratelimit-sample</module>
+        <module>rose-ratelimit-coverage</module>
     </modules>
 
     <dependencyManagement>
         <dependencies>
             <dependency>
+                <groupId>org.springframework.cloud</groupId>
+                <artifactId>spring-cloud-dependencies</artifactId>
+                <version>${spring-cloud.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.testcontainers</groupId>
+                <artifactId>testcontainers-bom</artifactId>
+                <version>${testcontainers.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
                 <groupId>io.zhijun</groupId>
-                <artifactId>rose-ratelimit-spring-boot-core</artifactId>
+                <artifactId>rose-ratelimit-core</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.zhijun</groupId>
+                <artifactId>rose-ratelimit-bucket4j</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
                 <groupId>io.zhijun</groupId>
                 <artifactId>rose-ratelimit-spring-boot-autoconfigure</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>io.zhijun</groupId>
-                <artifactId>rose-ratelimit-spring-boot-redis</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
@@ -91,6 +119,81 @@
                 <groupId>io.zhijun</groupId>
                 <artifactId>rose-ratelimit-spring-boot-starter-redis</artifactId>
                 <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.zhijun</groupId>
+                <artifactId>rose-ratelimit-spring-boot-starter-restclient</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.zhijun</groupId>
+                <artifactId>rose-ratelimit-spring-boot-starter-mq</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.github.resilience4j</groupId>
+                <artifactId>resilience4j-circuitbreaker</artifactId>
+                <version>${resilience4j.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.github.resilience4j</groupId>
+                <artifactId>resilience4j-retry</artifactId>
+                <version>${resilience4j.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.github.resilience4j</groupId>
+                <artifactId>resilience4j-timelimiter</artifactId>
+                <version>${resilience4j.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.github.resilience4j</groupId>
+                <artifactId>resilience4j-bulkhead</artifactId>
+                <version>${resilience4j.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.zhijun</groupId>
+                <artifactId>rose-ratelimit-spring-boot-starter-resilience4j</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.zhijun</groupId>
+                <artifactId>rose-ratelimit-spring-cloud-starter-openfeign</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.zhijun</groupId>
+                <artifactId>rose-ratelimit-spring-boot-starter-mybatis</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.mybatis</groupId>
+                <artifactId>mybatis</artifactId>
+                <version>${mybatis.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.mybatis.spring.boot</groupId>
+                <artifactId>mybatis-spring-boot-starter</artifactId>
+                <version>${mybatis-spring-boot.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.alibaba</groupId>
+                <artifactId>druid</artifactId>
+                <version>${druid.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.zhijun</groupId>
+                <artifactId>rose-ratelimit-spring-boot-starter-alibaba-druid</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.bucket4j</groupId>
+                <artifactId>bucket4j_jdk17-core</artifactId>
+                <version>${bucket4j.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.bucket4j</groupId>
+                <artifactId>bucket4j_jdk17-lettuce</artifactId>
+                <version>${bucket4j.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
@@ -109,6 +212,25 @@
                         <removeUnusedImports/>
                     </java>
                 </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+                <version>${jacoco.version}</version>
+                <executions>
+                    <execution>
+                        <id>prepare-coverage-agent</id>
+                        <goals>
+                            <goal>prepare-agent</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>coverage-report</id>
+                        <goals>
+                            <goal>report</goal>
+                        </goals>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>

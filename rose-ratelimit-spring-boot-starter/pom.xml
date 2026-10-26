@@ -5,7 +5,7 @@
     <modelVersion>4.0.0</modelVersion>
     <parent>
         <groupId>io.zhijun</groupId>
-        <artifactId>rose-ratelimit-spring-boot-starter-parent</artifactId>
+        <artifactId>rose-ratelimit</artifactId>
         <version>0.1.0-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
@@ -15,6 +15,10 @@
         <dependency>
             <groupId>io.zhijun</groupId>
             <artifactId>rose-ratelimit-spring-boot-autoconfigure</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.zhijun</groupId>
+            <artifactId>rose-ratelimit-bucket4j</artifactId>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>

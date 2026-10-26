@@ -7,11 +7,10 @@ import org.springframework.boot.autoconfigure.condition.*;
 import org.springframework.context.annotation.Bean;
 
 @AutoConfiguration(
-        before = RateLimitAutoConfiguration.class,
+        before = RateLimitSharedAutoConfiguration.class,
         afterName = "org.springframework.boot.micrometer.metrics.autoconfigure.CompositeMeterRegistryAutoConfiguration")
 @ConditionalOnClass(MeterRegistry.class)
 @ConditionalOnBean(MeterRegistry.class)
-@ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
 @ConditionalOnProperty(prefix = "rose.ratelimit", name = "enabled", havingValue = "true", matchIfMissing = true)
 public class RateLimitMetricsAutoConfiguration {
     @Bean
