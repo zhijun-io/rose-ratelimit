@@ -3,7 +3,7 @@
 [![CI](https://github.com/zhijun-io/rose-ratelimit/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/zhijun-io/rose-ratelimit/actions/workflows/ci.yml)
 ![Java 25](https://img.shields.io/badge/Java-25-orange?logo=openjdk&logoColor=white)
 ![Spring Boot 4.1.2](https://img.shields.io/badge/Spring%20Boot-4.1.2-6DB33F?logo=springboot&logoColor=white)
-[![Line coverage](https://img.shields.io/badge/line_coverage-%E2%89%A5_80%25-brightgreen)](#coverage)
+[![Codecov](https://codecov.io/gh/zhijun-io/rose-ratelimit/branch/main/graph/badge.svg?flag=library)](https://codecov.io/gh/zhijun-io/rose-ratelimit)
 [![GitHub stars](https://img.shields.io/github/stars/zhijun-io/rose-ratelimit)](https://github.com/zhijun-io/rose-ratelimit/stargazers)
 [![License](https://img.shields.io/github/license/zhijun-io/rose-ratelimit)](LICENSE)
 
@@ -214,7 +214,7 @@ Run the repository checks with:
 ./mvnw spotless:check verify
 ```
 
-Redis Testcontainers tests require Docker. JaCoCo generates the aggregate report at `rose-ratelimit-coverage/target/site/jacoco-aggregate/index.html`; the build enforces at least 80% aggregate line coverage.
+Redis Testcontainers tests require Docker. Run `./mvnw -Pcoverage -pl rose-ratelimit-coverage -am verify` to generate the aggregate report at `rose-ratelimit-coverage/target/site/jacoco-aggregate/index.html`; the sample is excluded. Codecov enforces an 80% project coverage target for the `library` flag, and GitHub Actions uploads the aggregate JaCoCo report. Configure `CODECOV_TOKEN` only if required by the repository's Codecov setup.
 
 ## Scope and migration
 
