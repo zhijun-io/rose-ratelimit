@@ -1,37 +1,70 @@
-# Rose Rate Limit Spring Boot Starter
+# Rose Rate Limit
 
-[![CI](https://github.com/zhijun-io/rose-ratelimit-spring-boot-starter/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/zhijun-io/rose-ratelimit-spring-boot-starter/actions/workflows/ci.yml)
+[![CI](https://github.com/zhijun-io/rose-ratelimit/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/zhijun-io/rose-ratelimit/actions/workflows/ci.yml)
 ![Java 25](https://img.shields.io/badge/Java-25-orange?logo=openjdk&logoColor=white)
-![Spring Boot 4.1.1](https://img.shields.io/badge/Spring%20Boot-4.1.1-6DB33F?logo=springboot&logoColor=white)
-[![GitHub stars](https://img.shields.io/github/stars/zhijun-io/rose-ratelimit-spring-boot-starter)](https://github.com/zhijun-io/rose-ratelimit-spring-boot-starter/stargazers)
-[![License](https://img.shields.io/github/license/zhijun-io/rose-ratelimit-spring-boot-starter)](LICENSE)
+![Spring Boot 4.1.2](https://img.shields.io/badge/Spring%20Boot-4.1.2-6DB33F?logo=springboot&logoColor=white)
+[![Line coverage](https://img.shields.io/badge/line_coverage-%E2%89%A5_80%25-brightgreen)](#coverage)
+[![GitHub stars](https://img.shields.io/github/stars/zhijun-io/rose-ratelimit)](https://github.com/zhijun-io/rose-ratelimit/stargazers)
+[![License](https://img.shields.io/github/license/zhijun-io/rose-ratelimit)](LICENSE)
 
-无需业务注解或代码调用，通过外部配置对 Servlet / Spring MVC HTTP 请求限流。支持 Boot 4.1.1、Java 25，使用 Bucket4j 8.16.1 Token Bucket。
+Rose Rate Limit applies limits from external configuration. The default starter protects Servlet Filter and Spring MVC requests without requiring application annotations. Optional starters add Redis storage, outbound HTTP, database and messaging integrations, and Resilience4j behaviors.
 
-## 引入
+Requires Java 25 and Spring Boot 4.1.2. The default token bucket is provided by Bucket4j.
+
+## Modules
+
+Import the BOM to align Rose module versions. Add only the integrations the application needs.
+
+| Artifact | Purpose |
+| --- | --- |
+| `rose-ratelimit-bom` | Aligns Rose module versions |
+| `rose-ratelimit-spring-boot-starter` | Servlet Filter and Spring MVC limits with local Bucket4j storage |
+| `rose-ratelimit-spring-boot-starter-redis` | Redis-backed shared limits |
+| `rose-ratelimit-spring-boot-starter-resilience4j` | Circuit breaker, retry, time limiter, and bulkhead |
+| `rose-ratelimit-spring-boot-starter-restclient` | Synchronous Spring `RestClient` calls |
+| `rose-ratelimit-spring-cloud-starter-openfeign` | OpenFeign calls; requires Spring Cloud OpenFeign |
+| `rose-ratelimit-spring-boot-starter-mybatis` | MyBatis mapped statements |
+| `rose-ratelimit-spring-boot-starter-alibaba-druid` | SQL table matching through Alibaba Druid |
+| `rose-ratelimit-spring-boot-starter-mq` | Kafka and Rabbit listeners; requires the corresponding Spring messaging dependency |
+
+The lower-level `rose-ratelimit-core`, `rose-ratelimit-bucket4j`, and `rose-ratelimit-spring-boot-autoconfigure` modules are available for custom integrations.
+
+## Install
+
+Import the BOM and add the default starter:
 
 ```xml
-<dependency>
-    <groupId>io.zhijun</groupId>
-    <artifactId>rose-ratelimit-spring-boot-starter</artifactId>
-    <version>0.1.0-SNAPSHOT</version>
-</dependency>
+<dependencyManagement>
+    <dependencies>
+        <dependency>
+            <groupId>io.zhijun</groupId>
+            <artifactId>rose-ratelimit-bom</artifactId>
+            <version>0.1.0-SNAPSHOT</version>
+            <type>pom</type>
+            <scope>import</scope>
+        </dependency>
+    </dependencies>
+</dependencyManagement>
+
+<dependencies>
+    <dependency>
+        <groupId>io.zhijun</groupId>
+        <artifactId>rose-ratelimit-spring-boot-starter</artifactId>
+    </dependency>
+</dependencies>
 ```
 
-默认本机状态。应用自行选择 Web 服务器及 MVC 依赖；已有 MVC 应用继续使用 spring-boot-starter-webmvc，本 Starter 不强制安装 MVC。
+The starter does not add a web server or MVC dependency. Use the web stack already selected by the application. For Redis, replace the default starter with `rose-ratelimit-spring-boot-starter-redis` and set `rose.ratelimit.store.type=redis`. Adding the Redis starter alone does not change the selected store.
 
-Redis 将依赖替换为 rose-ratelimit-spring-boot-starter-redis，再设置 store.type=redis。仅引入 Redis 依赖不会自动切换默认后端。
+## Configure HTTP limits
 
-## 示例应用
-
-可运行示例位于 [rose-ratelimit-spring-boot-sample](rose-ratelimit-spring-boot-sample/README.md)，包含无注解 Filter/MVC 限流和可选 `@RateLimit` 用法。
-
-## 无注解配置
+Rules are checked in configuration order. The first enabled rule matching a request is applied; an unmatched request passes through. Buckets start full and refill continuously.
 
 ```yaml
 spring:
   application:
     name: example-api
+
 rose:
   ratelimit:
     rules:
@@ -44,7 +77,7 @@ rose:
         refill-period: 1m
         key-source: ip
         failure-mode: CLOSED
-      - id: item-read
+      - id: items-read
         stage: MVC
         path: /api/items/**
         methods: [GET]
@@ -52,70 +85,35 @@ rose:
         refill-tokens: 20
         refill-period: 1s
         key-source: principal
-      - id: item-write
-        stage: MVC
-        path: /api/items/**
-        methods: [POST, PUT, DELETE]
-        capacity: 5
-        refill-tokens: 5
-        refill-period: 1s
-        key-source: principal
 ```
 
-Filter 覆盖普通 Servlet 和由其他过滤器处理的登录端点。MVC 使用已解析的 Controller 方法，无需业务注解，默认按方法分别计算额度。
+`FILTER` covers Servlet requests, including endpoints handled by earlier filters when its order permits. `MVC` matches resolved controller mappings. Servlet paths use Spring's application path, not a substring of the raw request URI.
 
-每个阶段按列表顺序取第一个匹配的启用规则。未匹配放行。桶初始满额，按 refill-period 持续补充 refill-tokens，允许 capacity 范围内突发。
+MVC rules with a path or handler are bound to registered controller methods during startup. By default, a rule that binds to no mapping fails startup. Late-added mappings, such as some documentation endpoints, require a restart to be included. MVC rules without a path or handler can be referenced by the optional `@RateLimit("rule-id")` annotation. This annotation applies only to controller methods or classes; it is not service AOP.
 
-## 规则
+By default, MVC uses `scope: HANDLER`, with buckets keyed by controller class and method name. Overloaded methods with the same name share a bucket. Use `scope: RULE` to share one bucket across all matching handlers. Filter rules default to `scope: RULE`.
 
-| 配置 | 默认值或含义 |
+## Rule options
+
+| Option | Meaning |
 | --- | --- |
-| id | 必填、唯一，字母数字及 ._- |
-| enabled | true |
-| stage | FILTER，可选 MVC |
-| path | context path 之后的路径，Spring PathPattern，如 /api/** |
-| methods | 空列表匹配全部 HTTP 方法 |
-| handler | MVC 可选类全名#方法名，支持 *，如 com.example.*#export |
-| scope | FILTER 默认为 RULE，MVC 为 HANDLER；RULE 共用同规则额度 |
-| capacity / refill-tokens / refill-period | 10 / 10 / 1s；最小周期 1ms |
-| key-source | ip，或 principal、header、自定义 resolver 名 |
-| key-header | header 来源必填 |
-| missing-key | REJECT 返回 400；SHARED 共用缺失身份桶 |
-| store | 继承全局 store.type，默认 local |
-| failure-mode | 继承全局 OPEN；CLOSED 在后端异常时返回 503 |
-| status / content-type / body | 429 / application/problem+json / 自动生成的错误体 |
+| `id` | Required and unique; letters, digits, `.`, `_`, and `-` |
+| `stage` | `FILTER`, `MVC`, `REST_CLIENT`, `FEIGN`, `MYBATIS`, `JDBC`, `MQ`, or `INVOKE` |
+| `path`, `methods` | Path pattern and optional HTTP methods for HTTP stages; empty methods match all |
+| `target`, `handler` | Select an integration target or handler; formats vary by stage |
+| `capacity`, `refill-tokens`, `refill-period` | Bucket size and refill rate; defaults are `10`, `10`, and `1s` |
+| `key-source` | `ip`, `principal`, `header`, or a named resolver plugin |
+| `key-header` | Header name when `key-source: header` |
+| `missing-key` | `REJECT` returns 400; `SHARED` uses a shared missing-identity bucket |
+| `store` | Store plugin name; defaults to the global `rose.ratelimit.store.type` (`local`) |
+| `failure-mode` | `OPEN` passes on backend errors; `CLOSED` returns 503 |
+| `status`, `content-type`, `body` | Rejection response for HTTP limits; defaults to 429 and Problem Details JSON |
 
-path 不是正则，非法模式启动失败。配置了启用的 MVC 规则但缺少 MVC classpath 时也会启动失败（显式 mvc-enabled=false 除外）。MVC 无 path/handler 的规则仅供注解使用。不同阶段、不同规则可叠加；不是跨桶事务，后续拒绝不退还前面的额度。
+`path` uses Spring `PathPattern`, not regular expressions. Enabled MVC rules require MVC on the classpath unless MVC is disabled. Different matching rules can both consume a request; deductions across buckets are not transactional, so an earlier deduction is not refunded if a later rule rejects. The same rule ID is deduplicated when it matches both Filter and MVC handling for one request.
 
-## 可选注解
+## Optional integrations
 
-```yaml
-rose:
-  ratelimit:
-    rules:
-      - id: export
-        stage: MVC
-        capacity: 2
-        refill-tokens: 2
-        refill-period: 1m
-        key-source: principal
-```
-
-```java
-import io.zhijun.ratelimit.web.RateLimit;
-
-@RateLimit("export")
-@GetMapping("/api/export")
-public String export() {
-    return "result";
-}
-```
-
-支持 Controller 类或方法，方法注解覆盖类。注解只引用外部规则 ID，不是 Service AOP 注解。显式绑定后不使用该规则的 path/methods/handler 选择条件，其他配置仍有效。
-
-外部 MVC 匹配先执行，注解随后执行。同 ID 同一请求仅扣一次，包括异步重新分派；不同 ID 各扣一次。注解不能撤销入口 Filter 的规则。引用不存在或非 MVC 规则在启动时失败。
-
-## Redis
+### Redis storage
 
 ```yaml
 spring:
@@ -127,64 +125,99 @@ spring:
       port: ${REDIS_PORT:6379}
       connect-timeout: 1s
       timeout: 1s
+
 rose:
   ratelimit:
     namespace: production-example-api
     store:
       type: redis
-    redis:
-      timeout: 1s
-      max-retries: 8
 ```
 
-namespace 默认取 spring.application.name；Redis 两者都未设置时启动失败。同应用所有副本使用相同 namespace，不同应用/环境隔离。
+Redis requires `namespace` or `spring.application.name`; all application instances must use the same namespace. Different applications and environments should use different namespaces. The Redis backend uses Bucket4j CAS and a separately managed Lettuce connection. A backend failure is not retried for the current request; later requests can reconnect. Changing a rule's quota changes its bucket key and starts a new bucket. See [the v6 migration guide](docs/migration-v6.md) for the Redis key version change.
 
-使用 Boot Lettuce 配置，独立限流连接按需创建并自动关闭。Bucket4j CAS 原子更新，TTL 按恢复满额时间计算。节点需要时钟同步。操作 timeout 不包括初次连接的全部时间，连接使用 Boot connect-timeout。
+### RestClient
 
-已通过 standalone Redis、三主节点 Redis Cluster 和 Redis Sentinel 主从提升的 Testcontainers 验证。Cluster 测试覆盖路由及共享额度，不覆盖副本故障转移；Sentinel 测试验证提升后后续请求重建连接并保留复制的桶状态。连接断开时当前请求返回后端错误，不会自动重放；后续请求重新建连。参数指纹进入键，修改额度会重置桶，滚动发布中不同版本短暂使用各自的桶。新实现使用 v2 前缀，旧版 Lua 状态等待原 TTL 到期，不自动迁移。
+Use `stage: REST_CLIENT` with `target: rest-client:https://host` to match an origin, or use `path` to match paths across origins. The limit runs before the network request. Automatic integration applies to clients built from Spring Boot's injected `RestClient.Builder`; `RestClient.create()` bypasses the customizer.
 
-## 身份、顺序和故障
+### OpenFeign
 
-Filter 默认 order=Integer.MIN_VALUE+10，适合认证前 IP 限流。principal 要用 filter-order 放到建立身份的认证过滤器之后，或选择 MVC。认证 Filter 若已结束登录请求，排在它之后的 Filter 无法保护该请求。
+Use `stage: FEIGN` and a target such as `feign:com.example.PaymentClient#createOrder`. The optional starter requires Spring Cloud OpenFeign. A rejected call throws `FeignException`; it is not returned as an HTTP 429 response.
 
-ip 使用 remoteAddr，不自行解析转发头；部署方负责可信代理。header 必须来自可信身份来源，任意可变请求头不能证明身份。不读取请求体，不使用密码或 Token。
+### MyBatis
 
-身份缺失默认 400；额度耗尽默认 429 和向上取整的 Retry-After。只有后端异常使用 OPEN/CLOSED；程序错误不自动放行。默认 OPEN 优先可用性，登录等保护规则建议 CLOSED。异常日志按规则每分钟限频。
+Use `stage: MYBATIS` with a mapped statement target, for example `mybatis:com.example.ReportMapper.findSummary`. Matching is by statement ID; the starter does not check whether the statement is read-only. A rejected call throws `SQLException`. Avoid applying a matching JDBC rule to the same query, since both stages consume quota.
 
-本机默认最多 100000 个桶，由 local.max-buckets 调整。TTL 至少覆盖恢复满额时间；容量不足时报后端错误，不淘汰活跃桶。OPEN 会放行这种情况下的新身份。计数跨实例不共享，重启丢失。本机短同步区串行化入场和扣减，吞吐需按应用负载评估。
+### Druid JDBC
 
-## 插件与观测
+Use the Alibaba Druid starter and `stage: JDBC`, with a target such as `jdbc:sql-table:orders`. Matching is based on table names parsed from SQL. A rejected call throws `SQLException` with SQLState `45000`.
 
-实现 RateLimitStore 或 web.RateLimitKeyResolver 并注册为 Spring Bean，通过唯一 name 在规则中引用。缺少插件或名称冲突时启动失败。
+### Kafka and RabbitMQ
 
-```java
-@Bean
-RateLimitKeyResolver partnerKeyResolver() {
-    return new RateLimitKeyResolver() {
-        public String name() { return "partner"; }
-        public String resolve(HttpServletRequest request, String headerName) {
-            return (String) request.getAttribute("trustedPartnerId");
-        }
-    };
-}
+Use the MQ starter and add `spring-kafka`, `spring-boot-starter-amqp`, or both. Configure `stage: MQ` with a target such as `mq:kafka:topic` or `mq:rabbit:queue`. A rejected listener call throws `RateLimitMqRejectedException`.
+
+### Resilience4j
+
+The optional Resilience4j starter supports `kind: circuit-breaker` and `kind: composite`. Compose rate limiting and resilience behaviors on one rule:
+
+```yaml
+rose:
+  ratelimit:
+    rules:
+      - id: fragile-api
+        stage: FILTER
+        path: /api/fragile/**
+        kind: composite
+        behaviors: [rate-limit, circuit-breaker]
+        capacity: 100
+        refill-period: 1s
+        circuit-breaker:
+          failure-rate-threshold: 50
+          minimum-number-of-calls: 10
+        circuit-open-status: 503
 ```
 
-设置 key-source=partner。null/空白表示身份缺失；validate(headerName) 提供启动校验。后端不可用应抛 RateLimitBackendException。
+For HTTP requests, use `stage: FILTER` to decorate the Servlet chain with retry, time limiter, or bulkhead behaviors. `stage: MVC` applies rule selection to a controller but does not wrap its execution for these behaviors. Rate-limit rejection remains 429; an open circuit defaults to 503. Rejections do not trigger retry.
 
-默认 Bean 名：localRateLimitStore、redisRateLimitStore、ipRateLimitKeyResolver、principalRateLimitKeyResolver、headerRateLimitKeyResolver。同名 Bean 可使默认配置退让；新增能力使用新名称。插件包通过 AutoConfiguration.imports 自动注册，不需要 Enable 注解，没有热加载或独立插件生命周期。
+### Programmatic invocation
 
-存在 Micrometer MeterRegistry 时记录 rose.ratelimit.requests，标签为 rule、backend、result。也可实现 RateLimitObserver，观察失败不影响额度决策。
+`stage: INVOKE` is used through the `RoseResilience` API, not an automatic method interceptor. It works in non-web applications as well. See the sample and [development guide](docs/development-prompt.md) for usage.
 
-## 开关与构建
+## Identity and failure behavior
 
-- enabled=false 关闭整个限流功能；filter-enabled=false / mvc-enabled=false 独立关闭阶段。
-- 当前仅 Token Bucket、Servlet/MVC、请求级去重；不含 WebFlux、业务配额事务、请求体账号提取和在线刷新。
-- 早期版本迁移：key resolver 移到 web 包并改为具名接口；store 需有 name；路径改用 PathPattern；缺失身份由隐式共享变为默认拒绝。
-- 不再输出早期 RateLimit-Limit/Remaining 字段，使用 Retry-After。
+- `ip` uses `remoteAddr`; forwarded headers are not parsed. Configure trusted proxy handling at the application edge.
+- `principal` depends on authentication having established the principal. Place the Filter after authentication or use MVC where appropriate.
+- Do not use an untrusted, client-controlled header as an identity key. Request bodies, passwords, and tokens are not read.
+- Missing identity defaults to 400. Exhausted buckets return 429 and `Retry-After`.
+- Backend failure mode defaults to `OPEN`; use `CLOSED` for rules that must fail closed. Program errors are not treated as backend failures.
+- Local storage is per process and lost on restart. It defaults to at most 100,000 buckets and does not evict active buckets when full; adjust `rose.ratelimit.local.max-buckets` for the expected number of identities.
+
+The Servlet Filter handles `REQUEST` and `ASYNC` dispatches. It skips `ERROR` dispatches and does not apply limits again to `FORWARD` or `INCLUDE` targets.
+
+## Extend and observe
+
+Custom stores implement `RateLimitStore`; custom identity sources implement `RateLimitKeyResolver`. Register either as a Spring bean with a unique `name`, then refer to that name from a rule. Missing or duplicate plugin names fail startup. A backend implementation should report operational failures using `RateLimitBackendException`.
+
+When Micrometer is available, the starter records `rose.ratelimit.requests` with `rule`, `backend`, and `result` tags. Applications can also provide a `RateLimitObserver`; observer failures do not change quota decisions.
+
+## Sample and build
+
+The [sample application](rose-ratelimit-sample/README.md) demonstrates Filter and MVC rules, the optional annotation, MyBatis, and Resilience4j. Build and run it from the repository root:
 
 ```sh
-mvn spotless:check
-mvn verify
+./mvnw -pl rose-ratelimit-sample -am package
+java -jar rose-ratelimit-sample/target/rose-ratelimit-sample-0.1.0-SNAPSHOT.jar
 ```
 
-Redis Testcontainers 测试需要 Docker。完整方案见 [docs/development-prompt.md](docs/development-prompt.md)。
+Run the repository checks with:
+
+```sh
+./mvnw spotless:check verify
+```
+
+Redis Testcontainers tests require Docker. JaCoCo generates the aggregate report at `rose-ratelimit-coverage/target/site/jacoco-aggregate/index.html`; the build enforces at least 80% aggregate line coverage.
+
+## Scope and migration
+
+WebFlux, business quota transactions, request-body identity extraction, and online rule refresh are not supported.
+
+Version 6 replaces the framework integration previously supplied by [microsphere-resilience4j](https://github.com/microsphere-projects/microsphere-resilience4j). See [docs/migration-v6.md](docs/migration-v6.md) for migration steps and [CHANGELOG.md](CHANGELOG.md) for release notes.
